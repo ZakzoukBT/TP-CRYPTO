@@ -13,8 +13,10 @@ int main(void){
     printf("key_two : %02X%02X%02X%02X%02X%02X\n", keys_two[0], keys_two[1], keys_two[2], keys_two[3], keys_two[4], keys_two[5]);
     printf("Encryption of message with key_one : ");
     smht48(keys,sizeof(message), message,h);
+    printhash(h);
     printf("Encryption of message with key_two : ");
     smht48(keys_two,sizeof(message),message,h);
+    printhash(h);
 
     return 0;
 }

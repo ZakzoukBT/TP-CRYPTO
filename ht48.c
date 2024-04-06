@@ -254,17 +254,8 @@ void smht48(const uint8_t k[static 6], uint64_t blen, const uint8_t m[blen], uin
     }
 
     ht48(sizeof(concat_message), concat_message, h);
-    printhash(h);
 }
 
-int main(void){
-    uint8_t keys[6] = {0, 1, 2, 3, 4, 5};
-    uint8_t message[6] = {9, 8, 7, 6, 5, 4};
-    uint8_t keys_two[6] = {0xE4, 0x16, 0x9F, 0x12, 0xD3, 0xBA};
-    uint8_t h[6];
-    
-    smht48(keys,sizeof(message), message,h);
-    smht48(keys_two,sizeof(message),message,h);
+void keyrec(const uint8_t h[static 6], uint64_t blen, const uint8_t m[blen]){
 
-    return 0;
 }
