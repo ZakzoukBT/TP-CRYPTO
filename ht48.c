@@ -1,4 +1,5 @@
 #include "ht48.h"
+#include <string.h>
 
 #define HALF_BLOCK_SIZE 24
 #define MASK 0xFFFFFFULL
@@ -256,45 +257,39 @@ void smht48(const uint8_t k[static 6], uint64_t blen, const uint8_t m[blen], uin
     ht48(sizeof(concat_message), concat_message, h);
 }
 
-int calculateBitWeight(uint8_t num) {
+int calculateBitWeight(uint64_t num) {
     int weight = 0;
-    for (int i = 0; i < 8; ++i) {
-        int bit = (num >> i) & 1;
-        
-        weight += bit;
+    while (num != 0) {
+        weight += num & 1;
+        num >>= 1;
     }
     return weight;
 }
 
-void key_rec(uint64_t blen, const uint8_t m[blen],const uint8_t tag[static 6] , uint64_t nb_true_bits, uint8_t k[static 6]){
-    //binary 0111 1111 = Dec 127
-    uint8_t init_k[6] = {0, 0, 0, 0, 0, 127};
-    //binary 1111 1110 = Dec 254
-    uint8_t final_k[6] = {254, 0, 0, 0, 0, 0};
+int verify_key(const uint8_t test_k[static 6], uint64_t blen, const uint8_t m[blen], const uint8_t tag[static 6], uint8_t k[static 6]){
+    printf("key_tested: %02X%02X%02X%02X%02X%02X\n", test_k[0], test_k[1], test_k[2], test_k[3], test_k[4], test_k[5]);
+    uint8_t h[6];
+    smht48(test_k, blen, m, h);
+    if (memcmp(h, tag, 6) == 0){
+        memcpy(k, test_k, 6);
+        printf("key_result: %02X%02X%02X%02X%02X%02X\n", k[0], k[1], k[2], k[3], k[4], k[5]);
+        return 1<<0;
+    }
+    return 0;
+}
 
-    do {
-        int bitWeight = 0;
-        for (int i = 0; i < 6; i++){
-            bitWeight += calculateBitWeight(init_k[i]);
-        }
-        if(bitWeight == 7){
-            printf("key_tested: %02X%02X%02X%02X%02X%02X\n", init_k[0], init_k[1], init_k[2], init_k[3], init_k[4], init_k[5]);
-            uint8_t h[6];
-            smht48(init_k, blen, m, h);
-            if(h == tag){
-                k = init_k;
-                printf("key_result: %02X%02X%02X%02X%02X%02X\n", k[0], k[1], k[2], k[3], k[4], k[5]);
-                return;
+void key_rec(uint64_t blen, const uint8_t m[blen], const uint8_t tag[static 6], uint64_t nb_true_bits, uint8_t k[static 6]) {
+    uint8_t key[6] = {0};
+    
+    // Parcourir toutes les combinaisons possibles de 7 bits parmi 48
+    for (uint64_t i = 0; i < (1ULL << 48); ++i) {
+        if (calculateBitWeight(i) == nb_true_bits) {
+            for (int j = 0; j < 6; ++j) {
+                key[j] = (i >> (j * 8)) & 0xFF;
+                if (verify_key(key, blen, m, tag, k) & 1){
+                    return;
+                }
             }
         }
-        for (int x = 5; x >= 0; x--){
-            if (init_k[x] != 255){
-                init_k[x] += 1;
-                break;
-            } else {
-                init_k[x] = 0;
-            }
-        }
-    } while (init_k[0] != final_k[0]);
-    return;
+    }
 }
