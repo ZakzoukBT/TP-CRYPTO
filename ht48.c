@@ -256,6 +256,45 @@ void smht48(const uint8_t k[static 6], uint64_t blen, const uint8_t m[blen], uin
     ht48(sizeof(concat_message), concat_message, h);
 }
 
-void keyrec(const uint8_t h[static 6], uint64_t blen, const uint8_t m[blen]){
+int calculateBitWeight(uint8_t num) {
+    int weight = 0;
+    for (int i = 0; i < 8; ++i) {
+        int bit = (num >> i) & 1;
+        
+        weight += bit;
+    }
+    return weight;
+}
 
+void key_rec(uint64_t blen, const uint8_t m[blen],const uint8_t tag[static 6] , uint64_t nb_true_bits, uint8_t k[static 6]){
+    //binary 0111 1111 = Dec 127
+    uint8_t init_k[6] = {0, 0, 0, 0, 0, 127};
+    //binary 1111 1110 = Dec 254
+    uint8_t final_k[6] = {254, 0, 0, 0, 0, 0};
+
+    do {
+        int bitWeight = 0;
+        for (int i = 0; i < 6; i++){
+            bitWeight += calculateBitWeight(init_k[i]);
+        }
+        if(bitWeight == 7){
+            printf("key_tested: %02X%02X%02X%02X%02X%02X\n", init_k[0], init_k[1], init_k[2], init_k[3], init_k[4], init_k[5]);
+            uint8_t h[6];
+            smht48(init_k, blen, m, h);
+            if(h == tag){
+                k = init_k;
+                printf("key_result: %02X%02X%02X%02X%02X%02X\n", k[0], k[1], k[2], k[3], k[4], k[5]);
+                return;
+            }
+        }
+        for (int x = 5; x >= 0; x--){
+            if (init_k[x] != 255){
+                init_k[x] += 1;
+                break;
+            } else {
+                init_k[x] = 0;
+            }
+        }
+    } while (init_k[0] != final_k[0]);
+    return;
 }
