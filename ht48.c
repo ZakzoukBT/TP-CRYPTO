@@ -266,30 +266,78 @@ int calculateBitWeight(uint64_t num) {
     return weight;
 }
 
-int verify_key(const uint8_t test_k[static 6], uint64_t blen, const uint8_t m[blen], const uint8_t tag[static 6], uint8_t k[static 6]){
-    printf("key_tested: %02X%02X%02X%02X%02X%02X\n", test_k[0], test_k[1], test_k[2], test_k[3], test_k[4], test_k[5]);
-    uint8_t h[6];
-    smht48(test_k, blen, m, h);
-    if (memcmp(h, tag, 6) == 0){
-        memcpy(k, test_k, 6);
-        printf("key_result: %02X%02X%02X%02X%02X%02X\n", k[0], k[1], k[2], k[3], k[4], k[5]);
-        return 1<<0;
-    }
-    return 0;
-}
-
-void key_rec(uint64_t blen, const uint8_t m[blen], const uint8_t tag[static 6], uint64_t nb_true_bits, uint8_t k[static 6]) {
-    uint8_t key[6] = {0};
-    
-    // Parcourir toutes les combinaisons possibles de 7 bits parmi 48
-    for (uint64_t i = 0; i < (1ULL << 48); ++i) {
-        if (calculateBitWeight(i) == nb_true_bits) {
-            for (int j = 0; j < 6; ++j) {
-                key[j] = (i >> (j * 8)) & 0xFF;
-                if (verify_key(key, blen, m, tag, k) & 1){
-                    return;
-                }
-            }
+int verifyTagEqual(const uint8_t tag1[6], const uint8_t tag2[6]){
+    for (int i = 0; i < 6; i++){
+        if (tag1[i] != tag2[i]){
+            return 0;
         }
     }
+    return 1;
+}
+
+void copyKeys(uint8_t source[6], uint8_t destination[6]){
+    for (int i = 0; i < 6; i++){
+        if(source[i] != destination[i]){
+            destination[i] = source[i];
+        }
+    }
+}
+
+int verifiyInitialisation(uint8_t k[static 6]){
+    for (int i = 0; i < 6; i++){
+        if(k[i] != 0){
+            return 0;
+        }
+    }
+    return 1;
+}
+
+void generateKeys(uint64_t blen, const uint8_t m[blen], const uint8_t tag[static 6], uint64_t weight, uint8_t k[static 6], uint8_t key_test[6], uint8_t index_table_cell, uint8_t index_table, uint8_t bit_left){
+    if(verifiyInitialisation(k) == -1){
+        return;
+    }
+    if(weight == 0){
+        uint8_t tag_result[6] = {0, 0, 0, 0, 0, 0};
+        smht48(key_test, blen, m, tag_result);
+        if(verifyTagEqual(tag_result, tag)){
+            copyKeys(key_test, k);
+            printf("Key found : ");
+            printhash(k);
+        }
+    }
+    else {
+        uint8_t new_key[6] = {0, 0, 0, 0, 0, 0};
+        copyKeys(key_test, new_key);
+        uint8_t new_index_table_cell;
+        uint8_t new_index_table;
+        if(index_table_cell == 7){
+            new_index_table = index_table - 1;
+            new_index_table_cell = 0;
+        }else{
+            new_index_table = index_table;
+            new_index_table_cell = index_table_cell + 1;
+        }
+        //CASE BIT STAY 0
+        if(bit_left > weight){
+            generateKeys(blen, m, tag, weight, k, new_key, new_index_table_cell, new_index_table, bit_left - 1);
+        }
+        //CASE BIT SET TO 1
+        if(key_test[index_table] == 0 && index_table_cell == 0){
+            key_test[index_table] = 1;
+        }
+        else{
+            if(key_test[index_table] == 0){
+                key_test[index_table] = 1 << index_table_cell;
+            }else{
+                key_test[index_table] += 1 << index_table_cell;
+            }
+        }
+        generateKeys(blen, m, tag, weight - 1, k, key_test, new_index_table_cell, new_index_table, bit_left - 1);
+    }
+}
+
+void key_rec(uint64_t blen, const uint8_t m[blen], const uint8_t tag[static 6], uint64_t weight, uint8_t k[static 6]) {
+    uint8_t init_key[6] = {0, 0, 0, 0, 0, 0};
+
+    generateKeys(blen, m, tag, weight, k, init_key, 0, 5, 48);
 }
