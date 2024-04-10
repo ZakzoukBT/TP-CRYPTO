@@ -293,7 +293,7 @@ int verifiyInitialisation(uint8_t k[static 6]){
 }
 
 void generateKeys(uint64_t blen, const uint8_t m[blen], const uint8_t tag[static 6], uint64_t weight, uint8_t k[static 6], uint8_t key_test[6], uint8_t index_table_cell, uint8_t index_table, uint8_t bit_left){
-    if(verifiyInitialisation(k) == -1){
+    if(!verifiyInitialisation(k)){
         return;
     }
     if(weight == 0){
